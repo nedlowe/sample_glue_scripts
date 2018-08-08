@@ -1,0 +1,34 @@
+%pyspark
+import sys
+from py4j.protocol import Py4JJavaError
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.transforms import *
+from datetime import date, timedelta
+
+# Create a Glue context
+glueContext = GlueContext(SparkContext.getOrCreate())
+
+start_date = date(2018,6,1)
+days_to_run = 1
+database = "xetra-db"
+first_hour = 10
+last_hour = 11
+
+results = 
+for process_date in (start_date + timedelta(n) for n in range(days_to_run)):
+    for hour in range(first_hour, last_hour+1):
+        table_name = "%s_bins_xetr%s_csv" % (start_date.strftime("%Y_%m_%d"), hour)
+        try:
+            xetra_df = glueContext.create_dynamic_frame.from_catalog(database=database, table_name=table_name)
+            print("SELECTING")
+            # A pretty lame way of only getting the hour prices
+            hour_str = str(hour) + ':00'
+            xetra_df = xetra_df.select_fields(['mnemonic', 'time', 'endprice']).toDF().filter("time == '%s'" % hour_str)
+            print("FILTERED")
+            print("Count: %s" % xetra_df.count())
+        except Py4JJavaError as e:
+            if "No such table" in str(e):
+                print("Table name not found: %s" % table_name)
+            else:
+                print(e)
